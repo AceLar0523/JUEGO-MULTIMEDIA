@@ -1,17 +1,18 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useRef, useState } from 'react';
+import { INITIAL_LIVES } from '@/components/game/constants';
+import { useGameClock } from '@/hooks/useGameClock';
+import { useLifeSystem } from '@/hooks/useLifeSystem';
+import { usePlayerController } from '@/hooks/usePlayerController';
 import ScoreBoard from './ScoreBoard';
 import VIPBox from './VIPBox';
 import Obstacle from './Obstacle';
 
 export default function GameBoard() {
-  const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [lives, setLives] = useState(3);
   const [isGameOver, setIsGameOver] = useState(false);
   const [gameOverReason, setGameOverReason] = useState<'time' | 'lives' | null>(null);
-  const [isInvulnerable, setIsInvulnerable] = useState(false);
-  
+
+  const boardRef = useRef<HTMLDivElement>(null);
   const vipRef = useRef<HTMLDivElement>(null);
   const obstaclesRef = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -19,83 +20,40 @@ export default function GameBoard() {
     obstaclesRef.current[index] = el;
   };
 
-  // Temporizador y control de tiempo
-  useEffect(() => {
-    if (timeLeft > 0 && !isGameOver) {
-      const timerId = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timerId);
-    } else if (timeLeft === 0 && !isGameOver) {
-      setIsGameOver(true);
-      setGameOverReason('time');
-    }
-  }, [timeLeft, isGameOver]);
-
-  // Aumento de puntuación por sobrevivir (1 punto cada segundo)
-  useEffect(() => {
-    if (!isGameOver && timeLeft > 0) {
-      const scoreTimer = setTimeout(() => setScore(s => s + 10), 1000);
-      return () => clearTimeout(scoreTimer);
-    }
-  }, [timeLeft, isGameOver]);
-
-  // Game Loop para Detección de Colisiones
-  useEffect(() => {
-    let animationFrameId: number;
-
-    const checkCollisions = () => {
-      if (!vipRef.current || isGameOver || isInvulnerable) {
-        animationFrameId = requestAnimationFrame(checkCollisions);
-        return;
-      }
-
-      const vipRect = vipRef.current.getBoundingClientRect();
-
-      for (let i = 0; i < obstaclesRef.current.length; i++) {
-        const obs = obstaclesRef.current[i];
-        if (obs) {
-          const obsRect = obs.getBoundingClientRect();
-          
-          if (
-            vipRect.left < obsRect.right &&
-            vipRect.right > obsRect.left &&
-            vipRect.top < obsRect.bottom &&
-            vipRect.bottom > obsRect.top
-          ) {
-            handleCollision();
-            break;
-          }
-        }
-      }
-      animationFrameId = requestAnimationFrame(checkCollisions);
-    };
-
-    animationFrameId = requestAnimationFrame(checkCollisions);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [isGameOver, isInvulnerable]);
-
-  const handleCollision = () => {
-    setIsInvulnerable(true);
-    
-    setLives((prevLives) => {
-      const newLives = prevLives - 1;
-      if (newLives <= 0) {
-        setIsGameOver(true);
-        setGameOverReason('lives');
-      }
-      return newLives;
-    });
-    
-    // Invulnerabilidad post-colisión con efecto visual
-    setTimeout(() => {
-      setIsInvulnerable(false);
-    }, 1500);
+  const handleTimeElapsed = () => {
+    setGameOverReason('time');
+    setIsGameOver(true);
   };
+
+  const handleLivesDepleted = () => {
+    setGameOverReason('lives');
+    setIsGameOver(true);
+  };
+
+  const { score, timeLeft } = useGameClock({
+    disabled: isGameOver,
+    onTimeElapsed: handleTimeElapsed,
+  });
+
+  const { lives, isInvulnerable, registerHit } = useLifeSystem({
+    disabled: isGameOver,
+    onDepleted: handleLivesDepleted,
+  });
+
+  const { handlePointerDown } = usePlayerController({
+    boardRef,
+    obstacleRefs: obstaclesRef,
+    playerRef: vipRef,
+    disabled: isGameOver,
+    isInvulnerable,
+    onObstacleCollision: registerHit,
+  });
 
   return (
     <div className="flex flex-col items-center w-full max-w-5xl mx-auto h-screen p-8">
-      <ScoreBoard score={score} timeLeft={timeLeft} lives={lives} />
+      <ScoreBoard score={score} timeLeft={timeLeft} lives={lives} maxLives={INITIAL_LIVES} />
       
-      <div className="relative flex-1 w-full bg-zinc-100 dark:bg-zinc-900/50 rounded-3xl overflow-hidden border-4 border-dashed border-zinc-300 dark:border-zinc-800 shadow-inner perspective-1000">
+      <div ref={boardRef} className="relative flex-1 w-full bg-zinc-100 dark:bg-zinc-900/50 rounded-3xl overflow-hidden border-4 border-dashed border-zinc-300 dark:border-zinc-800 shadow-inner perspective-1000">
         {isGameOver ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-50 backdrop-blur-sm">
             <h1 className="text-6xl font-black text-white mb-2 drop-shadow-[0_10px_0_rgba(255,255,255,0.2)]">
@@ -117,7 +75,7 @@ export default function GameBoard() {
           </div>
         ) : (
           <>
-            <VIPBox targetRef={vipRef} isInvulnerable={isInvulnerable} />
+            <VIPBox targetRef={vipRef} isInvulnerable={isInvulnerable} onPointerDown={handlePointerDown} />
             <Obstacle id={0} setRef={setObstacleRef} top="15%" delay={0} />
             <Obstacle id={1} setRef={setObstacleRef} top="40%" delay={700} />
             <Obstacle id={2} setRef={setObstacleRef} top="65%" delay={1200} />

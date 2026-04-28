@@ -1,35 +1,25 @@
 'use client';
-import React from 'react';
-import Moveable from 'react-moveable';
+import React, { type PointerEvent } from 'react';
 
 interface VIPBoxProps {
   targetRef: React.RefObject<HTMLDivElement | null>;
   isInvulnerable: boolean;
+  onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
 }
 
-export default function VIPBox({ targetRef, isInvulnerable }: VIPBoxProps) {
+export default function VIPBox({ targetRef, isInvulnerable, onPointerDown }: VIPBoxProps) {
   return (
-    <>
-      <div
-        ref={targetRef}
-        className={`absolute w-20 h-20 rounded-2xl flex items-center justify-center font-black text-2xl text-white z-50 border-t-4 border-white/40 transition-all duration-300 ${
-          isInvulnerable 
-            ? 'bg-red-500 shadow-[0_10px_0_#7f1d1d] scale-110' 
-            : 'bg-blue-600 shadow-[0_15px_0_#1e3a8a,0_25px_20px_rgba(0,0,0,0.4)]'
-        }`}
-        style={{ left: '50%', top: '80%', cursor: 'grab' }}
-      >
-        VIP
-      </div>
-      <Moveable
-        target={targetRef}
-        draggable={true}
-        onDrag={(e) => {
-          // Solución de la pista rápida del documento
-          e.target.style.left = `${e.left}px`;
-          e.target.style.top = `${e.top}px`;
-        }}
-      />
-    </>
+    <div
+      ref={targetRef}
+      onPointerDown={onPointerDown}
+      className={`absolute left-0 top-0 flex h-20 w-20 select-none items-center justify-center rounded-2xl border-t-4 border-white/40 font-black text-2xl text-white z-50 transition-all duration-300 will-change-transform ${
+        isInvulnerable
+          ? 'bg-red-500 shadow-[0_10px_0_#7f1d1d] scale-110'
+          : 'bg-blue-600 shadow-[0_15px_0_#1e3a8a,0_25px_20px_rgba(0,0,0,0.4)]'
+      }`}
+      style={{ cursor: 'grab', touchAction: 'none' }}
+    >
+      VIP
+    </div>
   );
 }
