@@ -1,5 +1,5 @@
 'use client';
-import { useSpring, animated } from 'react-spring';
+import { OBSTACLE_TRAVEL_DISTANCE, OBSTACLE_TRAVEL_DURATION_MS } from '@/components/game/constants';
 
 interface ObstacleProps {
   id: number;
@@ -9,20 +9,17 @@ interface ObstacleProps {
 }
 
 export default function Obstacle({ id, setRef, top, delay }: ObstacleProps) {
-  // Animación de movimiento horizontal usando react-spring
-  const styles = useSpring({
-    from: { left: '0%' },
-    to: { left: '80%' },
-    loop: { reverse: true },
-    config: { duration: 2500 },
-    delay: delay,
-  });
-
   return (
-    <animated.div
+    <div
       ref={(el) => setRef(el, id)}
-      className="absolute w-16 h-16 bg-zinc-800 rounded-lg border-t-4 border-zinc-600 shadow-[0_15px_0_#000,0_20px_20px_rgba(0,0,0,0.5)] z-40"
-      style={{ top, ...styles }}
+      className="obstacle-runner absolute left-0 h-16 w-16 rounded-lg border-t-4 border-zinc-600 bg-zinc-800 shadow-[0_15px_0_#000,0_20px_20px_rgba(0,0,0,0.5)] z-40"
+      style={{
+        top,
+        animationDelay: `${delay}ms`,
+        animationDuration: `${OBSTACLE_TRAVEL_DURATION_MS}ms`,
+        willChange: 'left',
+        ['--obstacle-travel-distance' as string]: OBSTACLE_TRAVEL_DISTANCE,
+      }}
     />
   );
 }

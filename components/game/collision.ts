@@ -1,4 +1,4 @@
-import { PLAYER_SIZE } from './constants';
+import { MAX_MOVEMENT_STEP, PLAYER_SIZE } from './constants';
 
 export interface Position {
   x: number;
@@ -118,36 +118,31 @@ export const resolvePlayerMovement = ({
   playerSize = PLAYER_SIZE,
 }: ResolvePlayerMovementArgs) => {
   const clampedDesiredPosition = clampPosition(desiredPosition, containerSize, playerSize);
-  const desiredBox = toBox(clampedDesiredPosition, playerSize);
-
-  if (!overlapsAnyObstacle(desiredBox, obstacleBoxes)) {
-    return {
-      position: clampedDesiredPosition,
-      hitObstacle: false,
-    };
-  }
-
+  const deltaX = clampedDesiredPosition.x - currentPosition.x;
+  const deltaY = clampedDesiredPosition.y - currentPosition.y;
+  const travelDistance = Math.hypot(deltaX, deltaY);
+  const totalSteps = Math.max(1, Math.ceil(travelDistance / MAX_MOVEMENT_STEP));
   let resolvedPosition = currentPosition;
-  const hitObstacle = true;
+  let hitObstacle = false;
 
-  const xOnlyPosition = clampPosition(
-    { x: clampedDesiredPosition.x, y: currentPosition.y },
-    containerSize,
-    playerSize,
-  );
+  for (let step = 1; step <= totalSteps; step += 1) {
+    const stepProgress = step / totalSteps;
+    const stepPosition = clampPosition(
+      {
+        x: currentPosition.x + (deltaX * stepProgress),
+        y: currentPosition.y + (deltaY * stepProgress),
+      },
+      containerSize,
+      playerSize,
+    );
+    const stepBox = toBox(stepPosition, playerSize);
 
-  if (!overlapsAnyObstacle(toBox(xOnlyPosition, playerSize), obstacleBoxes)) {
-    resolvedPosition = xOnlyPosition;
-  }
+    if (overlapsAnyObstacle(stepBox, obstacleBoxes)) {
+      hitObstacle = true;
+      break;
+    }
 
-  const yOnlyPosition = clampPosition(
-    { x: resolvedPosition.x, y: clampedDesiredPosition.y },
-    containerSize,
-    playerSize,
-  );
-
-  if (!overlapsAnyObstacle(toBox(yOnlyPosition, playerSize), obstacleBoxes)) {
-    resolvedPosition = yOnlyPosition;
+    resolvedPosition = stepPosition;
   }
 
   return {

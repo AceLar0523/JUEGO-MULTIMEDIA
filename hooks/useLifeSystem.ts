@@ -23,10 +23,22 @@ export function useLifeSystem({
   const isInvulnerableRef = useRef(false);
   const depletedRef = useRef(false);
   const timeoutRef = useRef<number | null>(null);
+  const collisionAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     onDepletedRef.current = onDepleted;
   }, [onDepleted]);
+
+  useEffect(() => {
+    const collisionAudio = new Audio('/SonidoColision.wav');
+    collisionAudio.preload = 'auto';
+    collisionAudioRef.current = collisionAudio;
+
+    return () => {
+      collisionAudio.pause();
+      collisionAudioRef.current = null;
+    };
+  }, []);
 
   useEffect(() => () => {
     if (timeoutRef.current !== null) {
@@ -37,6 +49,15 @@ export function useLifeSystem({
   const registerHit = () => {
     if (disabled || isInvulnerableRef.current || depletedRef.current) {
       return false;
+    }
+
+    const collisionAudio = collisionAudioRef.current;
+
+    if (collisionAudio) {
+      collisionAudio.currentTime = 0;
+      void collisionAudio.play().catch(() => {
+        // Ignora bloqueos del navegador si aún no hay interacción suficiente.
+      });
     }
 
     isInvulnerableRef.current = true;
